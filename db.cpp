@@ -396,7 +396,7 @@ void mysql::flush_peers() {
 		if (qsize >= 1000) {
 			peer_queue.pop();
 		}
-		sql = "INSERT INTO xbt_files_users (uid,fid,active,uploaded,downloaded,upspeed,downspeed,remaining,corrupt," +
+		sql = "INSERT IGNORE INTO xbt_files_users (uid,fid,active,uploaded,downloaded,upspeed,downspeed,remaining,corrupt," +
 			std::string("timespent,announced,ip,peer_id,useragent,mtime) VALUES ") + update_heavy_peer_buffer +
 					" ON DUPLICATE KEY UPDATE active=VALUES(active), uploaded=VALUES(uploaded), " +
 					"downloaded=VALUES(downloaded), upspeed=VALUES(upspeed), " +
@@ -412,7 +412,7 @@ void mysql::flush_peers() {
 		if (qsize >= 1000) {
 			peer_queue.pop();
 		}
-		sql = "INSERT INTO xbt_files_users (uid,fid,timespent,announced,peer_id,mtime) VALUES " +
+		sql = "INSERT IGNORE INTO xbt_files_users (uid,fid,timespent,announced,peer_id,mtime) VALUES " +
 					update_light_peer_buffer +
 					" ON DUPLICATE KEY UPDATE upspeed=0, downspeed=0, timespent=VALUES(timespent), " +
 					"announced=VALUES(announced), mtime=VALUES(mtime)";
