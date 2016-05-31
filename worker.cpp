@@ -111,6 +111,11 @@ std::string worker::work(const std::string &input, std::string &ip, client_opts_
 			break;
 	}
 
+	// skip trailing forwardslash on the query
+	if(input[pos] == '/'){
+		pos += 1;
+	}
+
 	if (input[pos] != '?') {
 		// No parameters given. Probably means we're not talking to a torrent client
 		client_opts.html = true;
