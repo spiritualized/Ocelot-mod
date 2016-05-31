@@ -30,8 +30,8 @@ mysql::mysql(config * conf) : u_active(false), t_active(false), p_active(false),
 		return;
 	}
 
-	if (!readonly) {
-		std::cout << "Clearing xbt_files_users and resetting peer counts...";
+	if (!readonly && purge_peers) {
+		std::cout << "Clearing " + table_peers + " and resetting peer counts...";
 		std::cout.flush();
 		clear_peer_data();
 		std::cout << "done" << std::endl;
@@ -44,6 +44,28 @@ void mysql::load_config(config * conf) {
 	mysql_username = conf->get_str("mysql_username");
 	mysql_password = conf->get_str("mysql_password");
 	readonly = conf->get_bool("readonly");
+
+	table_freeleeches = conf->get_str("table_freeleeches");
+	table_peers = conf->get_str("table_peers");
+	table_snatches = conf->get_str("table_snatches");
+	table_torrents = conf->get_str("table_torrents");
+	table_users = conf->get_str("table_users");
+	table_whitelist = conf->get_str("table_whitelist");
+
+	col_seeders = conf->get_str("col_seeders");
+	col_leechers = conf->get_str("col_leechers");
+	col_snatched = conf->get_str("col_snatched");
+
+	freeleeches_uid = conf->get_str("freeleeches_uid");
+	freeleeches_tid = conf->get_str("freeleeches_tid");
+	peers_tid = conf->get_str("peers_tid");
+	peers_uid = conf->get_str("peers_uid");
+	snatches_tid = conf->get_str("snatches_tid");
+	snatches_uid = conf->get_str("snatches_uid");
+	torrents_id = conf->get_str("torrents_id");
+	users_id = conf->get_str("torrents_id");
+
+	purge_peers = conf->get_bool("purge_peers");
 }
 
 void mysql::reload_config(config * conf) {
@@ -56,11 +78,11 @@ bool mysql::connected() {
 
 void mysql::clear_peer_data() {
 	try {
-		mysqlpp::Query query = conn.query("TRUNCATE xbt_files_users;");
+		mysqlpp::Query query = conn.query("TRUNCATE " + table_peers +";");
 		if (!query.exec()) {
-			std::cerr << "Unable to truncate xbt_files_users!" << std::endl;
+			std::cerr << "Unable to truncate " << table_peers << "!" << std::endl;
 		}
-		query = conn.query("UPDATE torrents SET Seeders = 0, Leechers = 0;");
+		query = conn.query("UPDATE " + table_torrents + " SET " + col_seeders + " = 0, " + col_leechers + " = 0;");
 		if (!query.exec()) {
 			std::cerr << "Unable to reset seeder and leecher count!" << std::endl;
 		}
@@ -72,7 +94,7 @@ void mysql::clear_peer_data() {
 }
 
 void mysql::load_torrents(torrent_list &torrents) {
-	mysqlpp::Query query = conn.query("SELECT ID, info_hash, freetorrent, Snatched FROM torrents ORDER BY ID;");
+	mysqlpp::Query query = conn.query("SELECT " + torrents_id + ", info_hash, freetorrent, " + col_snatched + " FROM " + table_torrents + " ORDER BY " + torrents_id + ";");
 	try {
 		mysqlpp::StoreQueryResult res = query.store();
 		std::unordered_set<std::string> cur_keys;
@@ -140,7 +162,7 @@ void mysql::load_torrents(torrent_list &torrents) {
 }
 
 void mysql::load_users(user_list &users) {
-	mysqlpp::Query query = conn.query("SELECT ID, can_leech, torrent_pass, (Visible='0' OR IP='127.0.0.1') AS Protected FROM users_main WHERE Enabled='1';");
+	mysqlpp::Query query = conn.query("SELECT " + users_id +", can_leech, torrent_pass, (Visible='0' OR IP='127.0.0.1') AS Protected FROM " + table_users + " WHERE Enabled='1';");
 	try {
 		mysqlpp::StoreQueryResult res = query.store();
 		size_t num_rows = res.num_rows();
@@ -184,7 +206,7 @@ void mysql::load_users(user_list &users) {
 }
 
 void mysql::load_tokens(torrent_list &torrents) {
-	mysqlpp::Query query = conn.query("SELECT uf.UserID, t.info_hash FROM users_freeleeches AS uf JOIN torrents AS t ON t.ID = uf.TorrentID WHERE uf.Expired = '0';");
+	mysqlpp::Query query = conn.query("SELECT uf." + freeleeches_uid + ", t.info_hash FROM " + table_freeleeches +" AS uf JOIN " + table_torrents +" AS t ON t." + torrents_id +" = uf." + freeleeches_tid + " WHERE uf.Expired = '0';");
 	int token_count = 0;
 	try {
 		mysqlpp::StoreQueryResult res = query.store();
@@ -209,7 +231,7 @@ void mysql::load_tokens(torrent_list &torrents) {
 
 
 void mysql::load_whitelist(std::vector<std::string> &whitelist) {
-	mysqlpp::Query query = conn.query("SELECT peer_id FROM xbt_client_whitelist;");
+	mysqlpp::Query query = conn.query("SELECT peer_id FROM " + table_whitelist +";");
 	try {
 		mysqlpp::StoreQueryResult res = query.store();
 		size_t num_rows = res.num_rows();
@@ -307,7 +329,7 @@ void mysql::flush_users() {
 	if (update_user_buffer == "") {
 		return;
 	}
-	sql = "INSERT INTO users_main (ID, Uploaded, Downloaded) VALUES " + update_user_buffer +
+	sql = "INSERT INTO " + table_users +" (" + users_id +", Uploaded, Downloaded) VALUES " + update_user_buffer +
 		" ON DUPLICATE KEY UPDATE Uploaded = Uploaded + VALUES(Uploaded), Downloaded = Downloaded + VALUES(Downloaded)";
 	user_queue.push(sql);
 	update_user_buffer.clear();
@@ -332,14 +354,14 @@ void mysql::flush_torrents() {
 	if (update_torrent_buffer == "") {
 		return;
 	}
-	sql = "INSERT INTO torrents (ID,Seeders,Leechers,Snatched,Balance) VALUES " + update_torrent_buffer +
-		" ON DUPLICATE KEY UPDATE Seeders=VALUES(Seeders), Leechers=VALUES(Leechers), " +
-		"Snatched=Snatched+VALUES(Snatched), Balance=VALUES(Balance), last_action = " +
-		"IF(VALUES(Seeders) > 0, NOW(), last_action)";
+	sql = "INSERT INTO " + table_torrents + " (" + torrents_id + "," + col_seeders +"," + col_leechers +"," + col_snatched +",Balance) VALUES " + update_torrent_buffer +
+		" ON DUPLICATE KEY UPDATE " + col_seeders +"=VALUES(" + col_seeders +"), " + col_leechers +"=VALUES(" + col_leechers +"), " +
+		col_snatched +"=" + col_snatched +"+VALUES(" + col_snatched +"), Balance=VALUES(Balance), last_action = " +
+		"IF(VALUES(" + col_seeders + ") > 0, NOW(), last_action)";
 	torrent_queue.push(sql);
 	update_torrent_buffer.clear();
 	sql.clear();
-	sql = "DELETE FROM torrents WHERE info_hash = ''";
+	sql = "DELETE FROM " + table_torrents + " WHERE info_hash = ''";
 	torrent_queue.push(sql);
 	if (t_active == false) {
 		std::thread thread(&mysql::do_flush_torrents, this);
@@ -361,7 +383,7 @@ void mysql::flush_snatches() {
 	if (update_snatch_buffer == "" ) {
 		return;
 	}
-	sql = "INSERT INTO xbt_snatched (uid, fid, tstamp, IP) VALUES " + update_snatch_buffer;
+	sql = "INSERT IGNORE INTO " + table_snatches + " (" + snatches_uid +", " + snatches_tid +", tstamp, IP) VALUES " + update_snatch_buffer;
 	snatch_queue.push(sql);
 	update_snatch_buffer.clear();
 	if (s_active == false) {
@@ -396,7 +418,7 @@ void mysql::flush_peers() {
 		if (qsize >= 1000) {
 			peer_queue.pop();
 		}
-		sql = "INSERT IGNORE INTO xbt_files_users (uid,fid,active,uploaded,downloaded,upspeed,downspeed,remaining,corrupt," +
+		sql = "INSERT IGNORE INTO " + table_peers + " (" + peers_uid + "," + peers_tid + ",active,uploaded,downloaded,upspeed,downspeed,remaining,corrupt," +
 			std::string("timespent,announced,ip,peer_id,useragent,mtime) VALUES ") + update_heavy_peer_buffer +
 					" ON DUPLICATE KEY UPDATE active=VALUES(active), uploaded=VALUES(uploaded), " +
 					"downloaded=VALUES(downloaded), upspeed=VALUES(upspeed), " +
@@ -412,7 +434,7 @@ void mysql::flush_peers() {
 		if (qsize >= 1000) {
 			peer_queue.pop();
 		}
-		sql = "INSERT IGNORE INTO xbt_files_users (uid,fid,timespent,announced,peer_id,mtime) VALUES " +
+		sql = "INSERT IGNORE INTO " + table_peers +" (" + peers_uid +"," + peers_tid +",timespent,announced,peer_id,mtime) VALUES " +
 					update_light_peer_buffer +
 					" ON DUPLICATE KEY UPDATE upspeed=0, downspeed=0, timespent=VALUES(timespent), " +
 					"announced=VALUES(announced), mtime=VALUES(mtime)";
@@ -441,7 +463,7 @@ void mysql::flush_tokens() {
 	if (update_token_buffer == "") {
 		return;
 	}
-	sql = "INSERT INTO users_freeleeches (UserID, TorrentID, Downloaded) VALUES " + update_token_buffer +
+	sql = "INSERT IGNORE INTO " + table_freeleeches +" (" + freeleeches_uid + ", " + freeleeches_tid +", Downloaded) VALUES " + update_token_buffer +
 		" ON DUPLICATE KEY UPDATE Downloaded = Downloaded + VALUES(Downloaded)";
 	token_queue.push(sql);
 	update_token_buffer.clear();

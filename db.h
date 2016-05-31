@@ -28,6 +28,15 @@ class mysql {
 		bool u_active, t_active, p_active, s_active, tok_active;
 		bool readonly;
 
+		std::string table_freeleeches, table_peers, table_snatches;
+		std::string table_torrents, table_users, table_whitelist;
+		std::string col_seeders, col_leechers, col_snatched;
+		std::string freeleeches_uid, freeleeches_tid;
+		std::string peers_tid, peers_uid;
+		std::string snatches_tid, snatches_uid;
+		std::string torrents_id, users_id;
+		bool purge_peers;
+
 		// These locks prevent more than one thread from reading/writing the buffers.
 		// These should be held for the minimum time possible.
 		std::mutex user_queue_lock;

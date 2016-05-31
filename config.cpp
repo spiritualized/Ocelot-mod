@@ -88,6 +88,30 @@ void config::init() {
 
 	// Debugging
 	add("readonly", false);
+
+	// Clear peer table on startup
+	add("purge_peers", true);
+
+	// table and column namings
+	add("table_freeleeches", "users_freeleeches");
+	add("table_peers", "xbt_files_users");
+	add("table_snatches", "xbt_snatched");
+	add("table_torrents", "torrents");
+	add("table_users", "users_main");
+	add("table_whitelist", "xbt_client_whitelist");
+
+	add("col_seeders", "seeders");
+	add("col_leechers", "leechers");
+	add("col_snatched", "snatched");
+
+	add("freeleeches_tid", "torrentid");
+	add("freeleeches_uid", "userid");
+	add("peers_tid", "fid");
+	add("peers_uid", "uid");
+	add("snatches_tid", "fid");
+	add("snatches_uid", "uid");
+	add("torrents_id", "id");
+	add("users_id", "id");
 }
 
 confval * config::get(const std::string &setting_name) {

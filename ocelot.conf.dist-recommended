@@ -30,24 +30,24 @@ reap_peers_interval = 1800
 schedule_interval   = 3
 
 readonly            = false
-purge_peers         = true
+purge_peers         = false
 
-table_freeleeches   = users_freeleeches
-table_peers         = xbt_files_users
-table_snatches      = xbt_snatched
-table_torrents      = torrents
-table_users         = users_main
-table_whitelist     = xbt_client_whitelist
+table_freeleeches   = ocelot_freeleeches
+table_peers         = ocelot_peers
+table_snatches      = ocelot_snatches
+table_torrents      = ocelot_torrents
+table_users         = ocelot_users
+table_whitelist     = ocelot_whitelist
 
 col_seeders         = seeders
 col_leechers        = leechers
 col_snatched        = snatched
 
-freeleeches_tid     = torrentid
-freeleeches_uid     = userid
-peers_tid           = fid
+freeleeches_tid     = tid
+freeleeches_uid     = uid
+peers_tid           = tid
 peers_uid           = uid
-snatches_tid        = fid
+snatches_tid        = tid
 snatches_uid        = uid
-torrents_id         = id
-users_id            = id
+torrents_id         = tid
+users_id            = uid
